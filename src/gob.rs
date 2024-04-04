@@ -57,9 +57,9 @@ impl Gob {
     fn from_file(file: &mut fs::File) -> Self {
         file.seek(SeekFrom::Start(0)).expect("Should be able to seek to start.");
 
-        let signature = byte::string_from_bytes(&byte::slice!(file, 4));
+        let signature = &byte::slice!(file, 4);
 
-        if signature != "GOB " {
+        if signature != b"GOB " {
             panic!("Bad signature in header of gob file.");
         }
 

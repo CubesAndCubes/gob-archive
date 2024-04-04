@@ -11,8 +11,10 @@ gob_archive [mode] [source] [destination?]
 ```
 
 - `mode`
-    - `extract` | `x` => Archive extraction mode.
-    - `create` | `c` => Archive creation mode.
+    - `x` => Archive extraction mode.
+    - `extract` => Archive extraction mode (verbose status output).
+    - `c` => Archive creation mode.
+    - `create` => Archive creation mode (verbose status output).
 - `source` Source archive or directory for extraction or creation respectively.
 - `destination` (optional) Destination directory or file for extraction or creation respectively.
 
