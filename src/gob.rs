@@ -1,44 +1,156 @@
+use std::{fs, io::{Read, Seek, SeekFrom}, path::{Path, PathBuf}};
+
 use crate::byte;
 
 pub struct Gob {
-    pub header: Header,
-    pub body: Body,
+    pub files: Vec<File>,
 }
 
-pub struct Header {
-    pub signature: [u8; 4],
-    pub version: [u8; 4],
-    pub body_offset: [u8; 4],
-}
+impl Gob {
+    fn get_files_from_directory(files: &mut Vec<File>, directory: &mut fs::ReadDir, root: Option<&Path>) -> std::io::Result<()> {
+        for item in directory {
+            let item = item?;
 
-impl Header {
-    pub fn new(signature: [u8; 4], version: [u8; 4], body_offset: [u8; 4]) -> Header {
-        let signature_converted = byte::string_from_bytes(&signature);
+            let path = item.path();
 
-        if signature_converted != "GOB " {
+            let root = root.unwrap_or(path.parent().expect("Should be able to get parent directory"));
+
+            if path.is_file() {
+                let mut file = fs::File::open(&path)?;
+
+                let mut data: Vec<u8> = Vec::new();
+
+                file.read_to_end(&mut data)?;
+
+                let filepath: PathBuf = path.strip_prefix(root).expect("Should be able to get relative path").into();
+
+                let file = File {
+                    data,
+                    filepath,
+                };
+
+                files.push(file);
+            }
+            else if path.is_dir() {
+                let mut directory = path.read_dir()?;
+
+                Self::get_files_from_directory(files, &mut directory, Some(root))?;
+            }
+            else {
+                panic!("Path is neither file nor directory: {}", path.display());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn from_directory(directory: &mut fs::ReadDir) -> Self {
+        let mut files: Vec<File> = Vec::new();
+
+        Self::get_files_from_directory(&mut files, directory, None).expect("Should be able to get files from directory");
+
+        Self {
+            files,
+        }
+    }
+
+    fn from_file(file: &mut fs::File) -> Self {
+        file.seek(SeekFrom::Start(0)).expect("Should be able to seek to start.");
+
+        let signature = byte::string_from_bytes(&byte::slice!(file, 4));
+
+        if signature != "GOB " {
             panic!("Bad signature in header of gob file.");
         }
 
-        let version_converted = u32::from_le_bytes(version);
+        let version = u32::from_le_bytes(byte::slice!(file, 4));
 
-        if version_converted != 0x14 {
-            panic!("Bad version {version_converted} for gob file.");
+        if version != 0x14 {
+            panic!("Bad version {version} for gob file.");
         }
 
-        Header {
-            signature,
-            version,
-            body_offset,
+        let body_offset = u32::from_le_bytes(byte::slice!(file, 4)) as u64;
+
+        file.seek(SeekFrom::Start(body_offset)).expect(&format!("Should be able to seek to body offset ({body_offset})."));
+
+        let file_count = u32::from_le_bytes(byte::slice!(file, 4));
+
+        let mut file_definitions: Vec<FileDefinition> = Vec::new();
+
+        for _ in 0..file_count {
+            let offset = u32::from_le_bytes(byte::slice!(file, 4)) as usize;
+
+            let size = u32::from_le_bytes(byte::slice!(file, 4)) as usize;
+
+            let filepath = PathBuf::from(byte::string_from_bytes(&byte::slice!(file, 128)).trim_matches(char::from(0)));
+
+            file_definitions.push(FileDefinition {
+                offset,
+                size,
+                filepath,
+            });
+        }
+
+        let mut files: Vec<File> = Vec::new();
+
+        for file_definition in file_definitions {
+            file.seek(SeekFrom::Start(file_definition.offset as u64)).expect(&format!("Should be able to seek to file offset ({}).", file_definition.offset));
+
+            let mut data: Vec<u8> = vec![0; file_definition.size];
+
+            file.read_exact(&mut data).expect("Should be able to read file data.");
+
+            let file = File {
+                data,
+                filepath: file_definition.filepath,
+            };
+
+            files.push(file);
+        }
+
+        Self {
+            files,
         }
     }
 }
 
-pub struct Body {
-    pub file_count: [u8; 4],
+impl From<&mut fs::File> for Gob {
+    fn from(file: &mut fs::File) -> Self {
+        Self::from_file(file)
+    }
+}
+
+impl From<&mut fs::ReadDir> for Gob {
+    fn from(directory: &mut fs::ReadDir) -> Self {
+        Self::from_directory(directory)
+    }
+}
+
+impl From<PathBuf> for Gob {
+    fn from(path: PathBuf) -> Self {
+        if path.is_file() {
+            let mut file = fs::File::open(path).expect("Should be able to open file.");
+
+            Self::from_file(&mut file)
+        }
+        else if path.is_dir() {
+            let mut directory = fs::read_dir(path).expect("Should be able to read directory.");
+
+            Self::from_directory(&mut directory)
+        }
+        else {
+            panic!("Path is neither file nor directory: {}", path.display());
+        }
+    }
+}
+
+struct FileDefinition {
+    offset: usize,
+    size: usize,
+    filepath: PathBuf,
 }
 
 pub struct File {
-    pub offset: [u8; 4],
-    pub size: [u8; 4],
-    pub filepath: [u8; 128],
+    pub data: Vec<u8>,
+    pub filepath: PathBuf,
 }

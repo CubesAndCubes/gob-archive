@@ -1,6 +1,9 @@
 use std::path::PathBuf;
-use std::{env, fs::File};
-use std::io::{Bytes, Read};
+use std::time::Instant;
+use std::{env, fs};
+use std::io::Write;
+
+use crate::gob::Gob;
 
 mod byte;
 mod gob;
@@ -35,27 +38,34 @@ fn extract() -> std::io::Result<()> {
         None => parent_directory.join(file_stem),
     };
 
-    let file = File::open(source)?;
+    let start_moment = Instant::now();
 
-    println!("Extracting: {file_name}");
+    println!("Reading: {file_name}");
 
-    println!("Target: {}", destination.display());
+    let gob = Gob::from(source);
 
-    let mut bytes = file.bytes();
+    println!("Found {} files", gob.files.len());
 
-    let header = gob::Header::new(
-        byte::slice!(bytes, 4),
-        byte::slice!(bytes, 4),
-        byte::slice!(bytes, 4),
-    );
+    println!("Extracting to: {}", destination.display());
 
-    for _ in 0..(u32::from_le_bytes(header.body_offset) - 12) {
-        bytes.next();
+    fs::create_dir_all(&destination)?;
+
+    for virtual_file in gob.files {
+        match virtual_file.filepath.parent() {
+            Some(parent) => fs::create_dir_all(destination.join(parent))?,
+            None => (),
+        };
+
+        let mut file = fs::File::create(&destination.join(&virtual_file.filepath))?;
+
+        file.write_all(&virtual_file.data)?;
+
+        println!("Created: {}", virtual_file.filepath.display());
     }
 
-    let file_count = u32::from_le_bytes(byte::slice!(bytes, 4)) as usize;
+    println!("Extraction complete.");
 
-    println!("Contains {file_count} files");
+    println!("Elapsed: {:.2?}", start_moment.elapsed());
 
     Ok(())
 }
