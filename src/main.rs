@@ -1,8 +1,8 @@
+use gob_rs::core::Gob;
+use std::io::{Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 use std::{env, fs};
-use std::io::{Seek, SeekFrom, Write};
-use gob_rs::core::Gob;
 
 fn main() -> std::io::Result<()> {
     let mode = env::args().nth(1).unwrap_or_else(|| {
@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
             eprintln!("Unknown mode: {mode}");
 
             std::process::exit(1);
-        },
+        }
     }
 }
 
@@ -37,7 +37,12 @@ fn create(verbose: bool) -> std::io::Result<()> {
         std::process::exit(1);
     }
 
-    let file_name = source.file_name().expect("Should be able to get file name.").to_str().expect("Should be able to convert to str.").to_string();
+    let file_name = source
+        .file_name()
+        .expect("Should be able to get file name.")
+        .to_str()
+        .expect("Should be able to convert to str.")
+        .to_string();
 
     let destination = match env::args().nth(3) {
         Some(destination) => PathBuf::from(destination),
@@ -56,7 +61,11 @@ fn create(verbose: bool) -> std::io::Result<()> {
 
     println!("Creating archive at: {}", destination.display());
 
-    fs::create_dir_all(&destination.parent().expect("Should be able to get parent directory"))?;
+    fs::create_dir_all(
+        &destination
+            .parent()
+            .expect("Should be able to get parent directory"),
+    )?;
 
     let mut file = fs::File::create(&destination)?;
 
@@ -124,11 +133,20 @@ fn extract(verbose: bool) -> std::io::Result<()> {
         std::process::exit(1);
     }
 
-    let file_stem = source.file_stem().expect("Should be able to get file stem.");
+    let file_stem = source
+        .file_stem()
+        .expect("Should be able to get file stem.");
 
-    let parent_directory = source.parent().expect("Should be able to get parent directory.");
+    let parent_directory = source
+        .parent()
+        .expect("Should be able to get parent directory.");
 
-    let file_name = source.file_name().expect("Should be able to get file name.").to_str().expect("Should be able to convert to str.").to_string();
+    let file_name = source
+        .file_name()
+        .expect("Should be able to get file name.")
+        .to_str()
+        .expect("Should be able to convert to str.")
+        .to_string();
 
     let destination = match env::args().nth(3) {
         Some(destination) => PathBuf::from(destination),
