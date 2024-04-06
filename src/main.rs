@@ -3,28 +3,39 @@ use std::time::Instant;
 use std::{env, fs};
 use std::io::{Seek, SeekFrom, Write};
 
-use crate::gob::Gob;
-
-mod byte;
-mod gob;
+use gob_rs::core::Gob;
 
 fn main() -> std::io::Result<()> {
-    let mode = env::args().nth(1).expect("Mode should be provided.").to_lowercase();
+    let mode = env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("No mode provided. Must be one of: x | extract | c | create");
 
-    match mode.as_str() {
+        std::process::exit(1);
+    });
+
+    match mode.to_lowercase().as_str() {
         "x" => extract(false),
         "extract" => extract(true),
         "c" => create(false),
         "create" => create(true),
-        _ => panic!("Unknown mode: {mode}"),
+        _ => {
+            eprintln!("Unknown mode: {mode}");
+
+            std::process::exit(1);
+        },
     }
 }
 
 fn create(verbose: bool) -> std::io::Result<()> {
-    let source = PathBuf::from(env::args().nth(2).expect("Source should be provided."));
+    let source = PathBuf::from(env::args().nth(2).unwrap_or_else(|| {
+        eprintln!("No source provided to create archive from.");
+
+        std::process::exit(1);
+    }));
 
     if !source.is_dir() {
-        panic!("Source is not a directory: {}", source.display());
+        eprintln!("Source is not a directory: {}", source.display());
+
+        std::process::exit(1);
     }
 
     let file_name = source.file_name().expect("Should be able to get file name.").to_str().expect("Should be able to convert to str.").to_string();
@@ -38,7 +49,7 @@ fn create(verbose: bool) -> std::io::Result<()> {
 
     println!("Reading: {file_name}");
 
-    let gob = Gob::from(source);
+    let gob = Gob::from_directory(&source)?;
 
     let file_count = gob.files.len() as u32;
 
@@ -73,15 +84,11 @@ fn create(verbose: bool) -> std::io::Result<()> {
 
         file.write_all(&size.to_le_bytes())?;
 
-        let file_path = virtual_file.filepath.as_os_str().as_encoded_bytes();
+        let filepath = virtual_file.filepath.as_os_str().as_encoded_bytes();
 
-        if file_path.len() > 128 {
-            panic!("File path is longer than 128 bytes: {}", virtual_file.filepath.display());
-        }
+        file.write_all(&filepath)?;
 
-        file.write_all(&file_path)?;
-
-        file.seek(SeekFrom::Current(128 - file_path.len() as i64))?;
+        file.seek(SeekFrom::Current(128 - filepath.len() as i64))?;
 
         if verbose {
             println!("Archived: {}", virtual_file.filepath.display());
@@ -100,10 +107,16 @@ fn create(verbose: bool) -> std::io::Result<()> {
 }
 
 fn extract(verbose: bool) -> std::io::Result<()> {
-    let source = PathBuf::from(env::args().nth(2).expect("Source should be provided."));
+    let source = PathBuf::from(env::args().nth(2).unwrap_or_else(|| {
+        eprintln!("No source provided to extract from.");
+
+        std::process::exit(1);
+    }));
 
     if !source.is_file() {
-        panic!("Source is not a file: {}", source.display());
+        eprintln!("Source is not a file: {}", source.display());
+
+        std::process::exit(1);
     }
 
     let file_stem = source.file_stem().expect("Should be able to get file stem.");
@@ -121,7 +134,7 @@ fn extract(verbose: bool) -> std::io::Result<()> {
 
     println!("Reading: {file_name}");
 
-    let gob = Gob::from(source);
+    let gob = Gob::from_file(&source)?;
 
     println!("Found {} files", gob.files.len());
 

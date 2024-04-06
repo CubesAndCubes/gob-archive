@@ -1,6 +1,8 @@
 # gob-archive
 
-Rust-written CLI archiver and un-archiver for the LucasArts GOB file format.
+Rust-written CLI archiver and un-archiver for the LucasArts GOB archive format.
+
+This program depends on the [gob-rs](https://github.com/CubesAndCubes/gob-rs) GOB parsing library.
 
 ## Usage
 
@@ -44,37 +46,4 @@ Will archive and write contents of `CD1` to `path/to/destination.GOB` (file will
 
 ```sh
 gob_archive c /path/to/CD1 /path/to/destination.GOB
-```
-
-## Specification
-
-### Data Structure
-
-GOB files are encoded in the little-endian format.
-
-The file structure can be abstracted as follows:
-
-```rs
-Gob {
-    header: Header,
-    body: Body,
-}
-
-Header {
-    signature: 4 bytes, // must be "GOB "
-    version: 4 bytes, // must be 0x14 -> 20
-    body_offset: 4 bytes, // usually 0xC -> 12; byte address where body starts
-}
-
-Body {
-    file_count: 4 bytes, // amount of files in archive
-    files: [File; file_count], // file definitions
-    ...file_data, // data of files; makes up remainder, thus size is variable
-}
-
-File {
-    offset: 4 bytes, // byte address where file data starts
-    size: 4 bytes, // size of file data in bytes
-    filepath: 128 bytes, // path of file within archive
-}
 ```
