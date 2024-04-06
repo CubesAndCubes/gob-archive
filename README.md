@@ -4,6 +4,14 @@ Rust-written CLI archiver and un-archiver for the LucasArts GOB archive format.
 
 This program depends on the [gob-rs](https://github.com/CubesAndCubes/gob-rs) GOB parsing library.
 
+## Installation
+
+See [releases](https://github.com/CubesAndCubes/gob-archive/releases) or build the program yourself via cargo:
+
+```sh
+cargo install gob_archive
+```
+
 ## Usage
 
 ### Syntax
