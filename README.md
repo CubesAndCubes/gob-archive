@@ -4,6 +4,11 @@ Rust-written CLI archiver and un-archiver for the LucasArts GOB archive format.
 
 This program depends on the [gob-rs](https://github.com/CubesAndCubes/gob-rs) GOB parsing library.
 
+It's tested to be able to unpack GOB files of (but is likely not limited to):
+
+- Indiana Jones and the Infernal Machine
+- Star Wars Jedi Knight: Dark Forces II
+
 ## Installation
 
 See [releases](https://github.com/CubesAndCubes/gob-archive/releases) or build the program yourself via cargo:
