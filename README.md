@@ -47,3 +47,7 @@ Will archive and write contents of `CD1` to `path/to/destination.GOB` (file will
 ```sh
 gob_archive c /path/to/CD1 /path/to/destination.GOB
 ```
+
+## License
+
+This software is dual-licensed under the [MIT license](LICENSE-MIT) and [Apache License, Version 2.0](LICENSE-APACHE).
