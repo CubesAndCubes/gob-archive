@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::time::Instant;
 use std::{env, fs};
 use std::io::{Seek, SeekFrom, Write};
-
 use gob_rs::core::Gob;
 
 fn main() -> std::io::Result<()> {
@@ -75,28 +74,34 @@ fn create(verbose: bool) -> std::io::Result<()> {
 
     let mut file_data_offset: u32 = 16 + 136 * file_count;
 
-    for virtual_file in &gob.files {
+    for (filepath, data) in &gob.files {
         file.write_all(&file_data_offset.to_le_bytes())?;
 
-        let size = virtual_file.data.len() as u32;
+        let size = data.len() as u32;
 
         file_data_offset += size;
 
         file.write_all(&size.to_le_bytes())?;
 
-        let filepath = virtual_file.filepath.as_os_str().as_encoded_bytes();
+        let filepath_bytes = filepath.as_os_str().as_encoded_bytes();
 
-        file.write_all(&filepath)?;
+        if filepath_bytes.len() > 128 {
+            eprintln!("Filepath is longer than 128 bytes: {}", filepath.display());
 
-        file.seek(SeekFrom::Current(128 - filepath.len() as i64))?;
+            std::process::exit(1);
+        }
+
+        file.write_all(&filepath_bytes)?;
+
+        file.seek(SeekFrom::Current(128 - filepath_bytes.len() as i64))?;
 
         if verbose {
-            println!("Archived: {}", virtual_file.filepath.display());
+            println!("Archived: {}", filepath.display());
         }
     }
 
-    for virtual_file in &gob.files {
-        file.write_all(&virtual_file.data)?;
+    for (_, data) in &gob.files {
+        file.write_all(data)?;
     }
 
     println!("Archive creation complete.");
@@ -142,18 +147,18 @@ fn extract(verbose: bool) -> std::io::Result<()> {
 
     fs::create_dir_all(&destination)?;
 
-    for virtual_file in gob.files {
-        match virtual_file.filepath.parent() {
+    for (filepath, data) in &gob.files {
+        match filepath.parent() {
             Some(parent) => fs::create_dir_all(destination.join(parent))?,
             None => (),
         };
 
-        let mut file = fs::File::create(&destination.join(&virtual_file.filepath))?;
+        let mut file = fs::File::create(destination.join(filepath))?;
 
-        file.write_all(&virtual_file.data)?;
+        file.write_all(data)?;
 
         if verbose {
-            println!("Created: {}", virtual_file.filepath.display());
+            println!("Created: {}", filepath.display());
         }
     }
 
