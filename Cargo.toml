@@ -2,6 +2,7 @@
 name = "gob_archive"
 description = "Rust-written CLI archiver and un-archiver for the LucasArts GOB archive format"
 repository = "https://github.com/CubesAndCubes/gob-archive"
+documentation = "https://github.com/CubesAndCubes/gob-archive"
 license = "MIT OR Apache-2.0"
 categories = ["encoding"]
 keywords = ["cli", "archive", "gob", "lucasarts"]
